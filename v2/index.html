@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kevin 的打字大冒險</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef0ff; --card:#ffffff; --text:#1f2150; --muted:#6b6f9a; --line:#d9dcf5;
+  --sun:#ffc93c; --tomato:#ff6b57; --mint:#2fcf98; --ink:#1f2150;
+  --font:'Fredoka','Noto Sans TC',system-ui,-apple-system,'PingFang TC','Microsoft JhengHei',sans-serif;
+  --chunk:0 5px 0 rgba(31,33,80,.18);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#171935; --card:#242752; --text:#f3f3ff; --muted:#a7abd6; --line:#343871; --chunk:0 5px 0 rgba(0,0,0,.4); }
+}
+:root[data-theme="dark"]{ --bg:#171935; --card:#242752; --text:#f3f3ff; --muted:#a7abd6; --line:#343871; --chunk:0 5px 0 rgba(0,0,0,.4); }
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+button:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+
+.screen{display:none;min-height:100%}
+.screen.active{display:flex;flex-direction:column}
+.wrap{width:100%;max-width:980px;margin:0 auto;padding:20px 18px 32px}
+
+/* ---------- home ---------- */
+.home-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-keys{display:flex;gap:4px}
+.logo-keys span{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:22px;color:var(--ink);box-shadow:0 4px 0 rgba(31,33,80,.25)}
+.logo h1{margin:0;font-size:clamp(24px,4vw,34px);font-weight:900;line-height:1.1}
+.logo p{margin:2px 0 0;color:var(--muted);font-size:15px}
+.star-badge{background:var(--sun);color:var(--ink);font-weight:700;font-size:20px;padding:8px 18px;border-radius:999px;box-shadow:var(--chunk)}
+
+.theme-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-top:24px}
+.theme-card{position:relative;text-align:left;border-radius:28px;padding:22px 22px 18px;min-height:190px;display:flex;flex-direction:column;box-shadow:0 8px 0 rgba(31,33,80,.22);transition:transform .12s}
+.theme-card:active{transform:translateY(4px);box-shadow:0 4px 0 rgba(31,33,80,.22)}
+.tc-icon{font-size:56px;line-height:1}
+.tc-name{font-size:28px;font-weight:900;margin-top:10px}
+.tc-tag{font-size:16px;opacity:.9;margin-top:2px}
+.tc-stars{margin-top:auto;padding-top:14px;font-weight:700;font-size:17px}
+.tc-new{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.9);color:var(--ink);font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px}
+
+.settings{margin-top:26px;background:var(--card);border-radius:22px;padding:16px 18px;display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;box-shadow:var(--chunk)}
+.settings .lbl{font-weight:700;margin-right:8px}
+.seg-group{display:inline-flex;background:var(--bg);border-radius:999px;padding:4px;gap:4px}
+.seg{padding:8px 14px;border-radius:999px;background:transparent;font-size:16px;font-weight:600}
+.seg.on{background:var(--sun);color:var(--ink)}
+.pill{padding:9px 16px;border-radius:999px;background:var(--bg);font-weight:600;font-size:16px}
+.tip{margin-top:18px;color:var(--muted);font-size:15px;line-height:1.6}
+.tip b{color:var(--text)}
+.reset{margin-left:auto;background:transparent;color:var(--muted);font-size:14px;text-decoration:underline}
+
+/* ---------- levels ---------- */
+.lv-head{border-radius:0 0 32px 32px;padding:18px 18px 26px}
+.lv-head-in{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:16px}
+.back{background:rgba(255,255,255,.9);color:var(--ink);font-weight:700;font-size:17px;padding:10px 16px;border-radius:999px;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+.lv-title{font-size:30px;font-weight:900;display:flex;align-items:center;gap:10px}
+.lv-title span{font-size:44px}
+.lv-sub{font-size:16px;opacity:.9}
+.level-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.level-card{display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);border-radius:20px;padding:14px 16px;box-shadow:var(--chunk);transition:transform .12s}
+.level-card:active{transform:translateY(3px)}
+.level-card.locked{opacity:.45;cursor:not-allowed}
+.lv-num{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font-weight:700;font-size:22px;background:var(--th,var(--sun));color:#fff}
+.level-card.locked .lv-num{background:var(--line)}
+.lv-info{flex:1;min-width:0}
+.lv-name{font-weight:700;font-size:19px}
+.lv-desc{font-size:14px;color:var(--muted);margin-top:2px}
+.lv-stars{flex:none;font-size:22px;letter-spacing:1px}
+.st-on{color:var(--sun);text-shadow:0 2px 0 rgba(0,0,0,.15)}
+.st-off{color:var(--line)}
+
+/* ---------- game ---------- */
+#game.active{height:100%}
+.hud{display:flex;align-items:center;gap:10px;padding:10px 14px 6px;flex-wrap:wrap}
+.icon-btn{width:46px;height:46px;border-radius:14px;background:var(--card);font-size:20px;box-shadow:var(--chunk)}
+.hud-title{flex:1;min-width:140px;line-height:1.15}
+.hud-title b{font-size:19px;display:block}
+.hud-title small{color:var(--muted);font-size:14px}
+.hud-stat{background:var(--card);padding:8px 14px;border-radius:14px;font-weight:700;font-size:18px;box-shadow:var(--chunk);white-space:nowrap}
+.progress{height:10px;margin:4px 14px 10px;border-radius:999px;background:var(--line);overflow:hidden}
+.progress div{height:100%;width:0;background:var(--mint);border-radius:999px;transition:width .3s}
+
+.play{position:relative;flex:1;min-height:230px;margin:0 14px;border-radius:26px;overflow:hidden}
+.play.hurt::after{content:'';position:absolute;inset:0;background:rgba(255,60,90,.28);animation:fadeout .45s forwards;pointer-events:none}
+.sky-decor{position:absolute;opacity:.55;pointer-events:none}
+.ground{position:absolute;left:0;right:0;bottom:0;height:46px;display:flex;justify-content:space-around;align-items:center;font-size:24px}
+.target{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:2}
+.t-emoji{font-size:clamp(40px,7vw,64px);line-height:1;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25));animation:bob 1.6s ease-in-out infinite}
+.t-word{background:#fff;color:var(--ink);border-radius:16px;padding:0 14px;font-weight:700;font-size:clamp(30px,4.6vw,46px);letter-spacing:3px;box-shadow:0 5px 0 rgba(0,0,0,.22);border:3px solid var(--th-accent,#888);line-height:1.35;white-space:nowrap}
+.t-word.letter{text-transform:uppercase;min-width:64px;text-align:center}
+.t-word span.done{color:var(--mint)}
+.t-word span.cur{text-decoration:underline;text-decoration-thickness:4px;text-underline-offset:6px;text-decoration-color:var(--tomato)}
+.t-zh{background:rgba(255,255,255,.85);color:var(--ink);font-size:15px;font-weight:700;border-radius:10px;padding:1px 10px}
+.target.shake{animation:shake .28s}
+.target.pop{animation:pop .38s forwards}
+.target.escaped{animation:escape .5s forwards}
+.particle,.float{position:absolute;transform:translate(-50%,-50%);pointer-events:none;z-index:3}
+.particle{font-size:24px;animation:fly .75s ease-out forwards}
+.float{font-weight:700;font-size:28px;color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.35);animation:rise 1s ease-out forwards;white-space:nowrap}
+.float.big{font-size:20px;background:var(--th-accent);padding:4px 16px;border-radius:999px;text-shadow:none;animation-duration:1.5s}
+
+.hint{text-align:center;font-size:18px;font-weight:600;padding:10px 12px 6px;min-height:40px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.hint .hk{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 8px;background:var(--card);border-radius:9px;box-shadow:var(--chunk);font-size:20px}
+.fdot{display:inline-block;width:16px;height:16px;border-radius:50%;border:2px solid rgba(0,0,0,.2)}
+
+.kb{--k:clamp(26px,6.3vw,54px);display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 8px 14px}
+.kb-row{display:flex;gap:6px}
+.kb-row.r1{padding-left:calc(var(--k)*.35)}
+.kb-row.r2{padding-left:calc(var(--k)*1.05)}
+.key{position:relative;width:var(--k);height:var(--k);border-radius:calc(var(--k)*.22);background:var(--fc);color:var(--ink);font-weight:700;font-size:calc(var(--k)*.42);box-shadow:0 4px 0 rgba(31,33,80,.28);transition:transform .08s}
+.key.space{width:calc(var(--k)*6);font-size:calc(var(--k)*.3)}
+.key.bump::after{content:'';position:absolute;left:35%;right:35%;bottom:14%;height:3px;border-radius:2px;background:rgba(31,33,80,.55)}
+.key.dim{opacity:.35}
+.key.next{outline:4px solid var(--tomato);outline-offset:2px;animation:pulse 1s ease-in-out infinite;opacity:1}
+.key.ok{transform:translateY(3px);box-shadow:0 1px 0 rgba(31,33,80,.28);filter:brightness(1.12)}
+.key.bad{background:var(--tomato)!important;color:#fff;transform:translateY(3px)}
+
+.overlay{position:absolute;inset:0;display:none;place-items:center;background:rgba(20,22,60,.45);z-index:10;border-radius:26px}
+.overlay.show{display:grid}
+.count{font-size:120px;font-weight:700;color:#fff;text-shadow:0 8px 0 rgba(0,0,0,.3);animation:zoom .7s ease-out}
+.count.go{color:var(--sun)}
+.pause-card{background:var(--card);border-radius:26px;padding:26px 30px;display:flex;flex-direction:column;gap:12px;align-items:stretch;min-width:240px;box-shadow:var(--chunk);text-align:center}
+.pc-title{font-size:26px;font-weight:900}
+.pc-tip{color:var(--muted);font-size:14px}
+
+.btn{padding:14px 24px;border-radius:999px;background:var(--card);font-size:19px;font-weight:700;box-shadow:var(--chunk);transition:transform .1s}
+.btn:active{transform:translateY(3px)}
+.btn.primary{background:var(--sun);color:var(--ink)}
+
+/* ---------- result ---------- */
+#result.active{justify-content:center;align-items:center;padding:24px 16px}
+.res-card{background:var(--card);border-radius:32px;padding:28px 26px;width:100%;max-width:520px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.2)}
+.res-emoji{font-size:80px;line-height:1}
+.res-title{font-size:30px;font-weight:900;margin:8px 0 4px}
+.res-stars{font-size:56px;letter-spacing:6px}
+.res-stars span{display:inline-block;animation:starIn .45s backwards}
+.res-note{min-height:24px;color:var(--tomato);font-weight:700;font-size:17px}
+.res-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 20px}
+.res-stats div{background:var(--bg);border-radius:16px;padding:10px}
+.res-stats b{display:block;font-size:26px}
+.res-stats small{color:var(--muted);font-size:14px}
+.res-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.res-hint{margin-top:12px;color:var(--muted);font-size:14px}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:600;font-size:16px;z-index:50;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+
+@keyframes bob{50%{transform:translateY(-6px)}}
+@keyframes shake{25%{transform:translateX(-9px)}75%{transform:translateX(9px)}}
+@keyframes pop{to{transform:scale(1.45);opacity:0}}
+@keyframes escape{to{transform:translateY(24px) scale(.8);opacity:0}}
+@keyframes fly{to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.3);opacity:0}}
+@keyframes rise{to{transform:translate(-50%,-140%);opacity:0}}
+@keyframes fadeout{to{opacity:0}}
+@keyframes pulse{50%{outline-color:transparent}}
+@keyframes zoom{from{transform:scale(2);opacity:0}}
+@keyframes starIn{from{transform:scale(0) rotate(-90deg)}}
+@media (prefers-reduced-motion: reduce){
+  .t-emoji,.key.next{animation:none}
+}
+@media (max-height:620px){
+  .kb{--k:clamp(24px,5vw,42px)}
+  .hud{padding-top:6px}
+}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<section class="screen active" id="home">
+  <div class="wrap">
+    <div class="home-top">
+      <div class="logo">
+        <div class="logo-keys"><span style="background:#7cc8ff">K</span><span style="background:#ffc36b">E</span><span style="background:#9be07a">V</span></div>
+        <div><h1>Kevin 的打字大冒險</h1><p>選一個世界，開始練英打！</p></div>
+      </div>
+      <div class="star-badge">⭐ <span id="totalStars">0</span></div>
+    </div>
+    <div class="theme-grid" id="themeGrid"></div>
+    <div class="settings">
+      <div><span class="lbl">速度</span><span class="seg-group" id="speedSeg"></span></div>
+      <button class="pill" id="soundBtn"></button>
+      <button class="reset" id="resetBtn">重設進度</button>
+    </div>
+    <p class="tip">小提醒：兩根<b>食指</b>放在 <b>F</b> 和 <b>J</b> 的小凸點上，其他手指排好在旁邊。看鍵盤顏色，就知道要用哪根手指！</p>
+  </div>
+</section>
+
+<!-- LEVELS -->
+<section class="screen" id="levels">
+  <div class="lv-head" id="lvHead">
+    <div class="lv-head-in">
+      <button class="back" id="lvBack">← 回首頁</button>
+      <div>
+        <div class="lv-title"><span id="lvIcon"></span><span style="font-size:inherit" id="lvName"></span></div>
+        <div class="lv-sub" id="lvTag"></div>
+      </div>
+    </div>
+  </div>
+  <div class="wrap"><div class="level-list" id="levelList"></div></div>
+</section>
+
+<!-- GAME -->
+<section class="screen" id="game">
+  <div class="hud">
+    <button class="icon-btn" id="pauseBtn" aria-label="暫停">⏸</button>
+    <div class="hud-title"><b id="hudTheme"></b><small id="hudLevel"></small></div>
+    <div class="hud-stat" id="hudHearts"></div>
+    <div class="hud-stat">⭐ <span id="hudScore">0</span></div>
+    <div class="hud-stat">🔥 <span id="hudCombo">0</span></div>
+  </div>
+  <div class="progress"><div id="progBar"></div></div>
+  <div class="play" id="play"></div>
+  <div class="hint" id="hint">&nbsp;</div>
+  <div class="kb" id="kb"></div>
+  <div class="overlay" id="overlay"></div>
+</section>
+
+<!-- RESULT -->
+<section class="screen" id="result">
+  <div class="res-card">
+    <div class="res-emoji" id="resEmoji"></div>
+    <div class="res-title" id="resTitle"></div>
+    <div class="res-stars" id="resStars"></div>
+    <div class="res-note" id="resNote"></div>
+    <div class="res-stats" id="resStats"></div>
+    <div class="res-btns">
+      <button class="btn" id="btnBack">回關卡</button>
+      <button class="btn" id="btnRetry">再玩一次</button>
+      <button class="btn primary" id="btnNext">下一關</button>
+    </div>
+    <div class="res-hint">按 Enter 也可以繼續</div>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   主題設定：要新增主題，複製一個 { ... } 區塊改內容就好
+   words: [英文單字, 圖示, 中文]
+   ============================================================ */
+const THEMES = [
+  {
+    id:'space', name:'星球探險', icon:'🚀', tagline:'打下飛來的星星和隕石！',
+    bg:'radial-gradient(ellipse at 20% 15%, #4a36a8 0%, transparent 50%), radial-gradient(ellipse at 85% 35%, #1e5f9e 0%, transparent 45%), linear-gradient(180deg,#0d0c33 0%,#231a5c 100%)',
+    ground:'linear-gradient(180deg,#6b5ca8,#3a2f73)', textOnBg:'#ffffff', accent:'#8f7bff',
+    decor:['🌑','🛰️','👩‍🚀','🌕','🛸','🌑'], skyDecor:['✦','✧','★','·','✦'],
+    carriers:['🪐','☄️','🛸','🌟','🌙','🛰️'], particles:['✨','⭐','💫'],
+    cheers:['命中目標！','太空英雄！','火力全開！','發射成功！'],
+    words:[['sun','☀️','太陽'],['moon','🌙','月亮'],['star','⭐','星星'],['mars','🔴','火星'],['sky','🌌','天空'],['ufo','🛸','幽浮'],
+           ['earth','🌍','地球'],['comet','☄️','彗星'],['alien','👽','外星人'],['rocket','🚀','火箭'],['planet','🪐','行星'],['orbit','🛰️','軌道']]
+  },
+  {
+    id:'zoo', name:'動物園', icon:'🦁', tagline:'幫走失的動物找到家！',
+    bg:'linear-gradient(180deg,#86d0ff 0%,#c6ecff 55%,#eaf8d8 100%)',
+    ground:'linear-gradient(180deg,#7ccf5a,#4ea539)', textOnBg:'#1f2150', accent:'#ff9f1c',
+    decor:['🌳','🌿','🎪','🌻','🌳','🌿'], skyDecor:['☁️','☁️','🐦','☁️'],
+    carriers:['🦒','🐘','🐒','🦓','🐧','🦘'], particles:['🎈','🍌','💛'],
+    cheers:['動物回家了！','超級飼育員！','好厲害！','動物們在歡呼！'],
+    words:[['cat','🐱','貓'],['dog','🐶','狗'],['pig','🐷','豬'],['cow','🐮','牛'],['lion','🦁','獅子'],['bear','🐻','熊'],['duck','🦆','鴨子'],
+           ['frog','🐸','青蛙'],['zebra','🦓','斑馬'],['tiger','🐯','老虎'],['panda','🐼','熊貓'],['monkey','🐵','猴子'],['horse','🐴','馬'],['rabbit','🐰','兔子']]
+  },
+  {
+    id:'ocean', name:'海底世界', icon:'🐳', tagline:'潛進大海，抓住游過的朋友！',
+    bg:'linear-gradient(180deg,#44c6ec 0%,#1886c9 55%,#0b4f8c 100%)',
+    ground:'linear-gradient(180deg,#f3d99b,#d7ae62)', textOnBg:'#ffffff', accent:'#00b4d8',
+    decor:['🐚','🌿','🦀','⭐','🐚','🌿'], skyDecor:['○','◦','○','🐟'],
+    carriers:['🐠','🐡','🐙','🐟','🦑','🐢'], particles:['💧','✨','🐚'],
+    cheers:['抓到了！','海洋小勇士！','游得好快！','太棒了！'],
+    words:[['fish','🐟','魚'],['crab','🦀','螃蟹'],['seal','🦭','海豹'],['wave','🌊','海浪'],['boat','⛵','船'],['sea','🌊','大海'],
+           ['shark','🦈','鯊魚'],['whale','🐳','鯨魚'],['shell','🐚','貝殼'],['squid','🦑','魷魚'],['turtle','🐢','海龜'],['dolphin','🐬','海豚'],['octopus','🐙','章魚']]
+  }
+];
+
+/* 關卡（每個主題都一樣，從基本列開始） */
+const LEVELS = [
+  {name:'F 和 J',       desc:'兩根食指放在小凸點上', type:'letters', keys:'fj',        count:15},
+  {name:'左手基本列',    desc:'A S D F',            type:'letters', keys:'asdf',      count:20},
+  {name:'右手基本列',    desc:'J K L',              type:'letters', keys:'jkl',       count:20},
+  {name:'整排基本列',    desc:'A 到 L 加上 G H',     type:'letters', keys:'asdfghjkl', count:20},
+  {name:'上排字母',      desc:'Q W E R T Y U I O P', type:'letters', keys:'qwertyuiop',count:20},
+  {name:'下排字母',      desc:'Z X C V B N M',       type:'letters', keys:'zxcvbnm',   count:20},
+  {name:'全部字母',      desc:'26 個字母大集合',      type:'letters', keys:'abcdefghijklmnopqrstuvwxyz', count:25},
+  {name:'主題小單字',    desc:'3～4 個字母的單字',    type:'words',   maxLen:4,  count:10},
+  {name:'主題單字挑戰',  desc:'所有主題單字',         type:'words',   maxLen:99, count:12}
+];
+
+const SPEEDS = {slow:{label:'🐢 慢慢來',mult:1.5}, normal:{label:'🐇 普通',mult:1}, fast:{label:'⚡ 挑戰',mult:0.72}};
+const MAX_HEARTS = 5;
+
+const FINGERS = {
+  lp:{name:'左手小指',color:'#ff9ecb'}, lr:{name:'左手無名指',color:'#ffc36b'}, lm:{name:'左手中指',color:'#9be07a'}, li:{name:'左手食指',color:'#7cc8ff'},
+  ri:{name:'右手食指',color:'#c3a8ff'}, rm:{name:'右手中指',color:'#9be07a'}, rr:{name:'右手無名指',color:'#ffc36b'}, rp:{name:'右手小指',color:'#ff9ecb'},
+  th:{name:'大拇指',color:'#e2e4f0'}
+};
+const KEY_FINGER = {q:'lp',a:'lp',z:'lp',w:'lr',s:'lr',x:'lr',e:'lm',d:'lm',c:'lm',r:'li',f:'li',v:'li',t:'li',g:'li',b:'li',
+  y:'ri',h:'ri',n:'ri',u:'ri',j:'ri',m:'ri',i:'rm',k:'rm',o:'rr',l:'rr',p:'rp',';':'rp',' ':'th'};
+const ROWS = ['qwertyuiop','asdfghjkl;','zxcvbnm'];
+
+/* ---------- storage ---------- */
+const PKEY='kevin-typing-progress-v1', SKEY='kevin-typing-settings-v1';
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+let progress = store.get(PKEY,{}) || {};
+let settings = Object.assign({speed:'normal',sound:true}, store.get(SKEY,{})||{});
+const getStars=(tid,li)=>(progress[tid]&&progress[tid][li])||0;
+function setStars(tid,li,s){ progress[tid]=progress[tid]||{}; if(s>(progress[tid][li]||0)){ progress[tid][li]=s; store.set(PKEY,progress); return true; } return false; }
+const isUnlocked=(tid,li)=>li===0||getStars(tid,li-1)>=1;
+const themeStars=tid=>LEVELS.reduce((a,_,i)=>a+getStars(tid,i),0);
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const starHtml=s=>'<span class="st-on">★</span>'.repeat(s)+'<span class="st-off">★</span>'.repeat(3-s);
+let toastT=0;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+
+/* ---------- sound ---------- */
+let actx=null;
+function beep(freq,dur=0.08,type='sine',vol=0.07,delay=0){
+  if(!settings.sound) return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended') actx.resume();
+    const t0=actx.currentTime+delay, o=actx.createOscillator(), g=actx.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0+dur+0.02);
+  }catch(e){}
+}
+const chord=(fs,gap=0.06)=>fs.forEach((f,i)=>beep(f,0.14,'triangle',0.06,i*gap));
+
+/* ---------- screens ---------- */
+let current='home', selTheme=0, selLevel=0, game=null;
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id)); current=id; window.scrollTo(0,0); }
+
+function renderHome(){
+  $('#totalStars').textContent=THEMES.reduce((a,t)=>a+themeStars(t.id),0);
+  $('#themeGrid').innerHTML=THEMES.map((t,i)=>{
+    const s=themeStars(t.id);
+    return `<button class="theme-card" data-i="${i}" style="background:${t.bg};color:${t.textOnBg}">
+      ${s===0?'<span class="tc-new">新的！</span>':''}
+      <div class="tc-icon">${t.icon}</div><div class="tc-name">${t.name}</div><div class="tc-tag">${t.tagline}</div>
+      <div class="tc-stars">⭐ ${s} / ${LEVELS.length*3}</div></button>`;
+  }).join('');
+  $('#speedSeg').innerHTML=Object.entries(SPEEDS).map(([k,v])=>`<button class="seg ${settings.speed===k?'on':''}" data-speed="${k}">${v.label}</button>`).join('');
+  $('#soundBtn').textContent=settings.sound?'🔊 音效開':'🔇 音效關';
+  $('#resetBtn').textContent='重設進度'; resetArmed=false;
+}
+
+function openTheme(i){
+  selTheme=i; const t=THEMES[i];
+  const h=$('#lvHead'); h.style.background=t.bg; h.style.color=t.textOnBg;
+  $('#lvIcon').textContent=t.icon; $('#lvName').textContent=t.name; $('#lvTag').textContent=t.tagline;
+  $('#levelList').innerHTML=LEVELS.map((L,li)=>{
+    const un=isUnlocked(t.id,li);
+    return `<button class="level-card ${un?'':'locked'}" data-li="${li}" ${un?'':'disabled'} style="--th:${t.accent}">
+      <div class="lv-num">${un?li+1:'🔒'}</div>
+      <div class="lv-info"><div class="lv-name">${L.name}</div><div class="lv-desc">${L.desc}</div></div>
+      <div class="lv-stars">${starHtml(getStars(t.id,li))}</div></button>`;
+  }).join('');
+  show('levels');
+}
+
+/* ---------- game ---------- */
+function buildQueue(theme,level){
+  if(level.type==='words'){
+    const pool=theme.words.filter(w=>w[0].length<=level.maxLen);
+    let out=[]; while(out.length<level.count) out.push(...shuffle(pool.slice()));
+    return out.slice(0,level.count).map(([text,emoji,zh])=>({text,emoji,zh}));
+  }
+  const keys=[...level.keys], out=[]; let prev='';
+  for(let i=0;i<level.count;i++){
+    let k; do{ k=pick(keys); }while(keys.length>1&&k===prev);
+    prev=k; out.push({text:k,emoji:pick(theme.carriers)});
+  }
+  return out;
+}
+
+let keyEls={};
+function renderKeyboard(level){
+  const kb=$('#kb');
+  const keyHtml=k=>{
+    const f=FINGERS[KEY_FINGER[k]];
+    const dim=level.type==='letters'&&k!==' '&&!level.keys.includes(k);
+    return `<button class="key ${k===' '?'space':''} ${k==='f'||k==='j'?'bump':''} ${dim?'dim':''}" data-k="${k}" style="--fc:${f.color}" tabindex="-1">${k===' '?'空白鍵':k.toUpperCase()}</button>`;
+  };
+  kb.innerHTML=ROWS.map((r,ri)=>`<div class="kb-row r${ri}">${[...r].map(keyHtml).join('')}</div>`).join('')+`<div class="kb-row">${keyHtml(' ')}</div>`;
+  keyEls={}; kb.querySelectorAll('.key').forEach(el=>keyEls[el.dataset.k]=el);
+}
+function flashKey(ch,cls){ const el=keyEls[ch]; if(!el) return; el.classList.add(cls); setTimeout(()=>el.classList.remove(cls),170); }
+function setHint(ch){
+  document.querySelectorAll('.key.next').forEach(e=>e.classList.remove('next'));
+  const h=$('#hint');
+  if(!ch){ h.innerHTML='&nbsp;'; return; }
+  if(keyEls[ch]) keyEls[ch].classList.add('next');
+  const f=FINGERS[KEY_FINGER[ch]];
+  h.innerHTML=`下一個 <span class="hk">${ch.toUpperCase()}</span> 用 <span class="fdot" style="background:${f?f.color:'#ccc'}"></span><b>${f?f.name:''}</b>`;
+}
+function updateHud(){
+  if(!game) return;
+  $('#hudHearts').textContent='❤️'.repeat(Math.max(0,game.hearts))+'🤍'.repeat(MAX_HEARTS-Math.max(0,game.hearts));
+  $('#hudScore').textContent=game.score;
+  $('#hudCombo').textContent=game.combo;
+  $('#progBar').style.width=(game.i/game.queue.length*100)+'%';
+}
+
+function cleanupGame(){
+  if(game){ game.running=false; cancelAnimationFrame(game.raf); game.timers.forEach(clearTimeout); }
+  game=null; const ov=$('#overlay'); ov.classList.remove('show'); ov.innerHTML='';
+}
+
+function startLevel(li){
+  cleanupGame();
+  selLevel=li;
+  const theme=THEMES[selTheme], level=LEVELS[li];
+  game={theme,level,li,queue:buildQueue(theme,level),i:0,hearts:MAX_HEARTS,score:0,combo:0,bestCombo:0,
+        correct:0,wrong:0,misses:0,active:0,running:false,paused:false,target:null,raf:0,last:0,timers:[]};
+  const play=$('#play');
+  play.style.background=theme.bg; play.style.setProperty('--th-accent',theme.accent);
+  $('#game').style.setProperty('--th-accent',theme.accent);
+  play.innerHTML='';
+  for(let k=0;k<10;k++){
+    const d=document.createElement('div'); d.className='sky-decor';
+    d.textContent=theme.skyDecor[k%theme.skyDecor.length];
+    d.style.cssText=`left:${Math.random()*92}%;top:${Math.random()*62}%;font-size:${14+Math.random()*20}px;color:${theme.textOnBg}`;
+    play.appendChild(d);
+  }
+  const g=document.createElement('div'); g.className='ground'; g.style.background=theme.ground;
+  g.innerHTML=theme.decor.map(x=>`<span>${x}</span>`).join(''); play.appendChild(g);
+  $('#hudTheme').textContent=`${theme.icon} ${theme.name}`;
+  $('#hudLevel').textContent=`第 ${li+1} 關：${level.name}`;
+  renderKeyboard(level); setHint(null); updateHud();
+  show('game');
+  countdown(()=>{ game.running=true; game.last=performance.now(); spawn(); game.raf=requestAnimationFrame(loop); });
+}
+
+function countdown(done){
+  const ov=$('#overlay'); let n=3;
+  const draw=()=>{ ov.innerHTML=n>0?`<div class="count">${n}</div>`:`<div class="count go">GO!</div>`; };
+  ov.classList.add('show'); draw(); beep(520);
+  const tick=()=>{
+    if(!game) return;
+    n--;
+    if(n>=0){ draw(); beep(n>0?520:880); game.timers.push(setTimeout(tick,700)); }
+    else { ov.classList.remove('show'); ov.innerHTML=''; done(); }
+  };
+  game.timers.push(setTimeout(tick,700));
+}
+
+function loop(ts){
+  if(!game||!game.running) return;
+  const dt=Math.min(0.1,(ts-game.last)/1000); game.last=ts;
+  if(!game.paused){
+    game.active+=dt;
+    const t=game.target;
+    if(t&&!t.done){ t.p+=dt/t.dur; positionTarget(t); if(t.p>=1) miss(); }
+  }
+  game.raf=requestAnimationFrame(loop);
+}
+function positionTarget(t){
+  const play=$('#play'); const maxY=play.clientHeight-46-t.el.offsetHeight;
+  t.el.style.top=(Math.min(1,t.p)*Math.max(0,maxY))+'px';
+}
+
+function spawn(){
+  if(!game||!game.running) return;
+  const item=game.queue[game.i], isL=game.level.type!=='words';
+  const el=document.createElement('div'); el.className='target';
+  el.innerHTML=`<div class="t-emoji">${item.emoji}</div><div class="t-word ${isL?'letter':''}">${[...item.text].map(c=>`<span>${c}</span>`).join('')}</div>${item.zh?`<div class="t-zh">${item.zh}</div>`:''}`;
+  const play=$('#play'); play.appendChild(el);
+  const w=play.clientWidth, ew=el.offsetWidth;
+  el.style.left=(12+Math.random()*Math.max(0,w-ew-24))+'px';
+  const base=isL?6.5:3+1.4*item.text.length;
+  const ramp=1-Math.min(0.3,game.i*0.015);
+  game.target={el,item,p:0,dur:base*SPEEDS[settings.speed].mult*ramp,idx:0,done:false};
+  markCurrent(); positionTarget(game.target); setHint(item.text[0]);
+}
+function markCurrent(){
+  const t=game.target;
+  t.el.querySelectorAll('.t-word span').forEach((s,k)=>{ s.classList.toggle('done',k<t.idx); s.classList.toggle('cur',k===t.idx&&!t.done); });
+}
+
+function handleChar(ch){
+  if(!game||!game.running||game.paused) return;
+  const t=game.target; if(!t||t.done) return;
+  if(ch===t.item.text[t.idx]){
+    game.correct++; t.idx++; flashKey(ch,'ok'); beep(620+t.idx*50,0.06,'triangle',0.05);
+    if(t.idx>=t.item.text.length) hit(); else { markCurrent(); setHint(t.item.text[t.idx]); }
+  }else{
+    game.wrong++; game.combo=0; flashKey(ch,'bad'); beep(170,0.12,'square',0.035);
+    t.el.classList.remove('shake'); void t.el.offsetWidth; t.el.classList.add('shake');
+    updateHud();
+  }
+}
+
+function relPos(el){ const pr=$('#play').getBoundingClientRect(), r=el.getBoundingClientRect(); return {x:r.left-pr.left+r.width/2,y:r.top-pr.top+r.height/2}; }
+function burst(x,y){
+  const play=$('#play');
+  for(let k=0;k<10;k++){
+    const s=document.createElement('span'); s.className='particle'; s.textContent=pick(game.theme.particles);
+    const a=Math.random()*Math.PI*2, d=60+Math.random()*80;
+    s.style.left=x+'px'; s.style.top=y+'px';
+    s.style.setProperty('--dx',Math.cos(a)*d+'px'); s.style.setProperty('--dy',Math.sin(a)*d+'px');
+    play.appendChild(s); setTimeout(()=>s.remove(),800);
+  }
+}
+function floatText(x,y,txt,big){
+  const s=document.createElement('div'); s.className='float'+(big?' big':''); s.textContent=txt;
+  s.style.left=Math.max(80,Math.min($('#play').clientWidth-80,x))+'px'; s.style.top=y+'px';
+  $('#play').appendChild(s); setTimeout(()=>s.remove(),1600);
+}
+
+function hit(){
+  const t=game.target; t.done=true; markCurrent();
+  game.combo++; game.bestCombo=Math.max(game.bestCombo,game.combo);
+  const gain=10*t.item.text.length+Math.min(game.combo,10)*2; game.score+=gain;
+  const p=relPos(t.el); burst(p.x,p.y); floatText(p.x,p.y-10,`+${gain}`);
+  if(game.combo%5===0) floatText(p.x,p.y-70,`${pick(game.theme.cheers)} 連擊 ${game.combo}！`,true);
+  chord([523,659,784]);
+  t.el.classList.add('pop'); const el=t.el; setTimeout(()=>el.remove(),420);
+  next();
+}
+function miss(){
+  const t=game.target; t.done=true;
+  game.hearts--; game.misses++; game.combo=0;
+  t.el.classList.add('escaped'); const el=t.el; setTimeout(()=>el.remove(),520);
+  beep(300,0.15,'sawtooth',0.04); beep(200,0.2,'sawtooth',0.04,0.12);
+  const play=$('#play'); play.classList.remove('hurt'); void play.offsetWidth; play.classList.add('hurt');
+  if(game.hearts<=0){ updateHud(); game.timers.push(setTimeout(()=>endGame(false),500)); game.running=false; return; }
+  next();
+}
+function next(){
+  game.i++; game.target=null; setHint(null); updateHud();
+  if(game.i>=game.queue.length){ game.timers.push(setTimeout(()=>endGame(true),550)); return; }
+  game.timers.push(setTimeout(spawn,380));
+}
+
+function endGame(win){
+  if(!game) return;
+  game.running=false; cancelAnimationFrame(game.raf);
+  const total=game.correct+game.wrong;
+  const acc=total?Math.round(game.correct/total*100):0;
+  const lpm=Math.round(game.correct/(Math.max(game.active,1)/60));
+  let stars=0;
+  if(win) stars=(acc>=95&&game.misses===0)?3:(acc>=85&&game.misses<=1)?2:1;
+  const before=getStars(game.theme.id,game.li);
+  const improved=win&&setStars(game.theme.id,game.li,stars);
+  const hasNext=win&&game.li+1<LEVELS.length;
+
+  $('#result').style.background=game.theme.bg;
+  $('#resEmoji').textContent=win?(stars===3?'🏆':stars===2?'🎉':'👍'):'💪';
+  $('#resTitle').textContent=win?['','過關了！','很棒喔！','完美！超厲害！'][stars]:'差一點點！再試一次';
+  $('#resStars').innerHTML=[0,1,2].map(k=>`<span class="${k<stars?'st-on':'st-off'}" style="animation-delay:${0.15+k*0.2}s">★</span>`).join('');
+  let note='';
+  if(win&&before===0&&hasNext) note='🔓 下一關解鎖了！';
+  else if(improved) note='✨ 新紀錄！';
+  else if(!win) note='讓東西掉到地上 5 次就要重來喔';
+  $('#resNote').textContent=note;
+  $('#resStats').innerHTML=`
+    <div><b>${acc}%</b><small>正確率</small></div>
+    <div><b>${lpm}</b><small>每分鐘打幾個字母</small></div>
+    <div><b>${game.bestCombo}</b><small>最高連擊</small></div>
+    <div><b>${game.score}</b><small>分數</small></div>`;
+  $('#btnNext').style.display=hasNext?'':'none';
+  if(win) chord([523,659,784,1047],0.12); else { beep(392,0.2,'triangle',0.06); beep(330,0.3,'triangle',0.06,0.2); }
+  $('#overlay').classList.remove('show');
+  show('result');
+}
+
+function togglePause(force){
+  if(!game||!game.running) return;
+  game.paused=force!==undefined?force:!game.paused;
+  const ov=$('#overlay');
+  if(game.paused){
+    ov.classList.add('show');
+    ov.innerHTML=`<div class="pause-card"><div class="pc-title">⏸ 休息一下</div>
+      <button class="btn primary" data-act="resume">繼續玩</button>
+      <button class="btn" data-act="quit">回關卡</button>
+      <div class="pc-tip">按 Esc 也可以繼續</div></div>`;
+  }else{ ov.classList.remove('show'); ov.innerHTML=''; game.last=performance.now(); }
+}
+
+/* ---------- events ---------- */
+let resetArmed=false;
+$('#themeGrid').addEventListener('click',e=>{ const c=e.target.closest('.theme-card'); if(c){ beep(700); openTheme(+c.dataset.i); } });
+$('#speedSeg').addEventListener('click',e=>{ const b=e.target.closest('[data-speed]'); if(!b) return; settings.speed=b.dataset.speed; store.set(SKEY,settings); renderHome(); });
+$('#soundBtn').addEventListener('click',()=>{ settings.sound=!settings.sound; store.set(SKEY,settings); renderHome(); beep(700); });
+$('#resetBtn').addEventListener('click',()=>{
+  if(!resetArmed){ resetArmed=true; $('#resetBtn').textContent='再按一次確認清除'; return; }
+  progress={}; store.set(PKEY,progress); renderHome(); toast('進度已清除');
+});
+$('#lvBack').addEventListener('click',()=>{ renderHome(); show('home'); });
+$('#levelList').addEventListener('click',e=>{ const c=e.target.closest('.level-card'); if(c&&!c.disabled) startLevel(+c.dataset.li); });
+$('#pauseBtn').addEventListener('click',()=>togglePause());
+$('#overlay').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  if(b.dataset.act==='resume') togglePause(false);
+  else { cleanupGame(); openTheme(selTheme); }
+});
+$('#kb').addEventListener('click',e=>{ const k=e.target.closest('.key'); if(k) handleChar(k.dataset.k); });
+$('#btnBack').addEventListener('click',()=>{ cleanupGame(); openTheme(selTheme); });
+$('#btnRetry').addEventListener('click',()=>startLevel(selLevel));
+$('#btnNext').addEventListener('click',()=>startLevel(selLevel+1));
+
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(current==='game'){
+    if(e.key==='Escape'){ e.preventDefault(); togglePause(); return; }
+    if(e.key==='Process'||e.key==='Unidentified'||(e.key.length===1&&/[^\x00-\x7F]/.test(e.key))){
+      e.preventDefault(); toast('請先切換成英文輸入（按 🌐 地球鍵或 Caps Lock）'); return;
+    }
+    if(e.key.length===1){ e.preventDefault(); handleChar(e.key.toLowerCase()); }
+  }else if(current==='result'&&e.key==='Enter'){
+    e.preventDefault();
+    ($('#btnNext').style.display!=='none'?$('#btnNext'):$('#btnRetry')).click();
+  }
+});
+document.addEventListener('visibilitychange',()=>{ if(document.hidden&&game&&game.running&&!game.paused) togglePause(true); });
+
+renderHome();
+</script>
+</body>
+</html>
