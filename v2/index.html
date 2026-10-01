@@ -190,6 +190,7 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
     <div class="settings">
       <div><span class="lbl">速度</span><span class="seg-group" id="speedSeg"></span></div>
       <button class="pill" id="soundBtn"></button>
+      <button class="pill" id="voiceBtn"></button>
       <button class="reset" id="resetBtn">重設進度</button>
     </div>
     <p class="tip">小提醒：兩根<b>食指</b>放在 <b>F</b> 和 <b>J</b> 的小凸點上，其他手指排好在旁邊。看鍵盤顏色，就知道要用哪根手指！</p>
@@ -250,6 +251,7 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
    主題設定：要新增主題，複製一個 { ... } 區塊改內容就好
    words: [英文單字, 圖示, 中文]
    ============================================================ */
+/* THEMES-START */
 const THEMES = [
   {
     id:'space', name:'星球探險', icon:'🚀', tagline:'打下飛來的星星和隕石！',
@@ -312,6 +314,15 @@ const THEMES = [
            ['fairy','🧚','仙子'],['dress','👗','洋裝'],['kitty','🐱','小貓'],['bunny','🐰','小兔子'],['flower','🌸','花'],['rainbow','🌈','彩虹'],['unicorn','🦄','獨角獸']]
   }
 ];
+/* THEMES-END */
+
+/* 結算畫面的文字（會念出來；改了要重跑 tools/gen_audio.py） */
+/* RESULT-LINES-START */
+const RESULT_LINES = {
+  win1:'過關了！', win2:'很棒喔！', win3:'完美！超厲害！', lose:'差一點點！再試一次',
+  unlock:'下一關解鎖了！', record:'新紀錄！'
+};
+/* RESULT-LINES-END */
 
 /* 關卡（每個主題都一樣，從基本列開始） */
 const LEVELS = [
@@ -345,7 +356,7 @@ const store = {
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 };
 let progress = store.get(PKEY,{}) || {};
-let settings = Object.assign({speed:'normal',sound:true}, store.get(SKEY,{})||{});
+let settings = Object.assign({speed:'normal',sound:true,voice:true}, store.get(SKEY,{})||{});
 const getStars=(tid,li)=>(progress[tid]&&progress[tid][li])||0;
 function setStars(tid,li,s){ progress[tid]=progress[tid]||{}; if(s>(progress[tid][li]||0)){ progress[tid][li]=s; store.set(PKEY,progress); return true; } return false; }
 const isUnlocked=(tid,li)=>li===0||getStars(tid,li-1)>=1;
@@ -361,11 +372,15 @@ function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('sh
 
 /* ---------- sound ---------- */
 let actx=null;
+function getActx(){
+  if(!actx){ const AC=window.AudioContext||window.webkitAudioContext; if(AC) actx=new AC(); }
+  return actx;
+}
 function beep(freq,dur=0.08,type='sine',vol=0.07,delay=0){
   if(!settings.sound) return;
   try{
-    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
-    if(actx.state==='suspended') actx.resume();
+    const actx=getActx(); if(!actx) return;
+    if(actx.state!=='running'){ const p=actx.resume(); if(p&&p.catch) p.catch(()=>{}); }
     const t0=actx.currentTime+delay, o=actx.createOscillator(), g=actx.createGain();
     o.type=type; o.frequency.value=freq;
     g.gain.setValueAtTime(vol,t0); g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
@@ -373,6 +388,135 @@ function beep(freq,dur=0.08,type='sine',vol=0.07,delay=0){
   }catch(e){}
 }
 const chord=(fs,gap=0.06)=>fs.forEach((f,i)=>beep(f,0.14,'triangle',0.06,i*gap));
+
+/* ---------- voice：預先產生的 mp3（audio/manifest.json），沒有就用 speechSynthesis ---------- */
+const voice=(()=>{
+  const MAX_WAIT=1500;              // 音檔還沒載好時最多等多久（ms），太晚就不念了
+  const TTS={en:{lang:'en-US',rate:0.85}, letters:{lang:'en-US',rate:0.85}, zh:{lang:'zh-TW',rate:1}};
+  const cache=new Map(), durations=new Map();
+  let manifest=null, manifestP=null, token=0, src=null, utter=null, unlocked=false;
+  const log=(...a)=>console.warn('[voice]',...a);
+
+  function loadManifest(){
+    if(!manifestP){
+      const clean=m=>m&&typeof m==='object'?{en:m.en||{},letters:m.letters||{},zh:m.zh||{}}:null;
+      const get=window.AUDIO_INLINE?Promise.resolve(window.AUDIO_INLINE)
+        :fetch('audio/manifest.json').then(r=>r.ok?r.json():null);
+      manifestP=get.then(m=>{ manifest=clean(m); return manifest; })
+        .catch(e=>{ log('讀不到 manifest，改用瀏覽器語音',e); return null; });
+    }
+    return manifestP;
+  }
+  const pathOf=(kind,key)=>manifest&&manifest[kind][key];
+  function decode(ctx,buf){
+    return new Promise((res,rej)=>{ const p=ctx.decodeAudioData(buf,res,rej); if(p&&p.then) p.then(res,rej); });
+  }
+  /* TTS 音檔前後有一段靜音（前約 0.2 秒、後約 1 秒），播放時跳過，念起來才跟得上畫面 */
+  function trimClip(buf){
+    const d=buf.getChannelData(0), n=d.length, TH=0.01, pad=Math.round(buf.sampleRate*0.03);
+    let a=0, b=n-1;
+    while(a<n&&Math.abs(d[a])<TH) a++;
+    while(b>a&&Math.abs(d[b])<TH) b--;
+    if(a>=b) return {buf,off:0,dur:buf.duration};
+    a=Math.max(0,a-pad); b=Math.min(n,b+pad);
+    return {buf,off:a/buf.sampleRate,dur:(b-a)/buf.sampleRate};
+  }
+  function readBytes(path){
+    if(path.startsWith('data:')){   // 單檔版（AUDIO_INLINE）直接解 base64，不經過 fetch
+      const s=atob(path.slice(path.indexOf(',')+1)), u=new Uint8Array(s.length);
+      for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i);
+      return Promise.resolve(u.buffer);
+    }
+    return fetch(path).then(r=>{ if(!r.ok) throw new Error(r.status+' '+path); return r.arrayBuffer(); });
+  }
+  function load(path){
+    if(!cache.has(path)){
+      const ctx=getActx();
+      cache.set(path,!ctx?Promise.resolve(null):readBytes(path)
+        .then(b=>decode(ctx,b))
+        .then(buf=>{ const clip=trimClip(buf); durations.set(path,clip.dur); return clip; })
+        .catch(e=>{ log('音檔載入失敗',path,e); cache.delete(path); return null; }));
+    }
+    return cache.get(path);
+  }
+  function preload(list){
+    loadManifest().then(()=>list.forEach(([kind,key])=>{ const p=pathOf(kind,key); if(p) load(p); }));
+  }
+
+  function ttsVoice(lang){
+    const base=lang.split('-')[0], norm=v=>(v.lang||'').replace('_','-');
+    const vs=speechSynthesis.getVoices();
+    return vs.find(v=>norm(v)===lang)
+      ||vs.find(v=>(norm(v)===base||norm(v).startsWith(base+'-'))&&!/HK|yue/i.test(norm(v)));
+  }
+  function speakTTS(kind,key,my,done){
+    if(!window.speechSynthesis||!window.SpeechSynthesisUtterance) return done();
+    const cfg=TTS[kind], v=ttsVoice(cfg.lang);
+    if(!v){ log('找不到 '+cfg.lang+' 的聲音，不出聲'); return done(); }
+    const u=new SpeechSynthesisUtterance(kind==='letters'?key.toUpperCase():key);
+    u.voice=v; u.lang=v.lang; u.rate=cfg.rate;
+    u.onend=u.onerror=()=>{ if(utter===u) utter=null; if(my===token) done(); };
+    utter=u;   // 保留參照：Chrome 會回收沒人參照的 utterance，onend 就不會觸發
+    setTimeout(()=>{   // Safari 在 cancel() 之後馬上 speak() 可能會被吃掉
+      if(my!==token) return;
+      try{ speechSynthesis.speak(u); }catch(e){ log(e); done(); }
+    },30);
+  }
+  function playClip(clip,my,done){
+    const ctx=getActx();
+    if(ctx.state!=='running'){ const p=ctx.resume(); if(p&&p.catch) p.catch(()=>{}); }
+    const s=ctx.createBufferSource(); s.buffer=clip.buf; s.connect(ctx.destination);
+    s.onended=()=>{ if(src===s) src=null; if(my===token) done(); };
+    src=s; s.start(0,clip.off,clip.dur);
+  }
+  function playOne(kind,key,my,done){
+    const path=pathOf(kind,key);
+    if(!path) return speakTTS(kind,key,my,done);
+    const t0=performance.now();
+    load(path).then(clip=>{
+      if(my!==token) return;
+      if(!clip) return speakTTS(kind,key,my,done);
+      if(performance.now()-t0>MAX_WAIT) return done();
+      playClip(clip,my,done);
+    }).catch(e=>log('播放失敗',kind,key,e));
+  }
+  const estimate=(kind,key)=>{ const p=pathOf(kind,key); return (p&&durations.get(p))||(kind==='zh'?0.3+key.length*0.28:0.8); };
+
+  function stop(){
+    token++;
+    if(src){ try{ src.onended=null; src.stop(); }catch(e){} src=null; }
+    try{ if(window.speechSynthesis&&(utter||speechSynthesis.speaking)) speechSynthesis.cancel(); }catch(e){}
+    utter=null;
+  }
+  /* 依序念 [[kind,key],...]，會中斷正在念的。kind：en／letters／zh。
+     回傳預估秒數（沒念就是 0）。不會丟出例外。 */
+  function sayAll(list){
+    try{
+      stop();
+      if(!settings.voice||!list.length) return 0;
+      const my=token;
+      const step=i=>{ if(i<list.length&&my===token) try{ playOne(list[i][0],list[i][1],my,()=>step(i+1)); }catch(e){ log(e); } };
+      step(0);
+      return list.reduce((a,[kind,key])=>a+estimate(kind,key),0);
+    }catch(e){ log(e); return 0; }
+  }
+  const say=(kind,key)=>sayAll([[kind,key]]);
+
+  /* iOS：第一次手勢時解鎖 AudioContext 與 speechSynthesis；之後被系統中斷也會在下次手勢時恢復 */
+  function unlock(){
+    try{
+      const ctx=getActx();
+      if(ctx&&ctx.state!=='running'){ const p=ctx.resume(); if(p&&p.catch) p.catch(()=>{}); }
+      if(unlocked) return; unlocked=true;
+      if(ctx){ const s=ctx.createBufferSource(); s.buffer=ctx.createBuffer(1,1,22050); s.connect(ctx.destination); s.start(0); }
+      if(window.speechSynthesis&&window.SpeechSynthesisUtterance){ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }
+    }catch(e){ log('解鎖失敗',e); }
+  }
+  ['pointerdown','touchend','click','keydown'].forEach(ev=>document.addEventListener(ev,unlock,true));
+  try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
+  loadManifest();
+  return {say,sayAll,stop,preload};
+})();
 
 /* ---------- screens ---------- */
 let current='home', selTheme=0, selLevel=0, game=null;
@@ -389,6 +533,7 @@ function renderHome(){
   }).join('');
   $('#speedSeg').innerHTML=Object.entries(SPEEDS).map(([k,v])=>`<button class="seg ${settings.speed===k?'on':''}" data-speed="${k}">${v.label}</button>`).join('');
   $('#soundBtn').textContent=settings.sound?'🔊 音效開':'🔇 音效關';
+  $('#voiceBtn').textContent=settings.voice?'🗣️ 發音開':'🗣️ 發音關';
   $('#resetBtn').textContent='重設進度'; resetArmed=false;
 }
 
@@ -450,6 +595,7 @@ function updateHud(){
 }
 
 function cleanupGame(){
+  voice.stop();
   if(game){ game.running=false; cancelAnimationFrame(game.raf); game.timers.forEach(clearTimeout); }
   game=null; const ov=$('#overlay'); ov.classList.remove('show'); ov.innerHTML='';
 }
@@ -475,9 +621,19 @@ function startLevel(li){
   $('#hudTheme').textContent=`${theme.icon} ${theme.name}`;
   $('#hudLevel').textContent=`第 ${li+1} 關：${level.name}`;
   renderKeyboard(level); setHint(null); updateHud();
+  preloadVoice(theme,level);
   show('game');
   countdown(()=>{ game.running=true; game.last=performance.now(); spawn(); game.raf=requestAnimationFrame(loop); });
 }
+
+function preloadVoice(theme,level){
+  const list=level.type==='letters'?[...level.keys].map(c=>['letters',c]):[];
+  theme.words.forEach(w=>list.push(['en',w[0]]));
+  theme.cheers.forEach(c=>list.push(['zh',c]));
+  Object.values(RESULT_LINES).forEach(s=>list.push(['zh',s]));
+  voice.preload(list);
+}
+const sayTarget=t=>{ if(!game.paused) voice.say(game.level.type==='words'?'en':'letters',t.item.text); };
 
 function countdown(done){
   const ov=$('#overlay'); let n=3;
@@ -519,6 +675,7 @@ function spawn(){
   const ramp=1-Math.min(0.3,game.i*0.015);
   game.target={el,item,p:0,dur:base*SPEEDS[settings.speed].mult*ramp,idx:0,done:false};
   markCurrent(); positionTarget(game.target); setHint(item.text[0]);
+  sayTarget(game.target);
 }
 function markCurrent(){
   const t=game.target;
@@ -560,10 +717,16 @@ function hit(){
   game.combo++; game.bestCombo=Math.max(game.bestCombo,game.combo);
   const gain=10*t.item.text.length+Math.min(game.combo,10)*2; game.score+=gain;
   const p=relPos(t.el); burst(p.x,p.y); floatText(p.x,p.y-10,`+${gain}`);
-  if(game.combo%5===0) floatText(p.x,p.y-70,`${pick(game.theme.cheers)} 連擊 ${game.combo}！`,true);
+  let wait=NEXT_DELAY;
+  if(game.combo%5===0){
+    const cheer=pick(game.theme.cheers);
+    floatText(p.x,p.y-70,`${cheer} 連擊 ${game.combo}！`,true);
+    const sec=voice.say('zh',cheer);   // 等鼓勵語念完再出下一個，免得被單字發音蓋掉
+    if(sec) wait=Math.min(2200,Math.max(wait,sec*1000+120));
+  }
   chord([523,659,784]);
   t.el.classList.add('pop'); const el=t.el; setTimeout(()=>el.remove(),420);
-  next();
+  next(wait);
 }
 function miss(){
   const t=game.target; t.done=true;
@@ -574,10 +737,11 @@ function miss(){
   if(game.hearts<=0){ updateHud(); game.timers.push(setTimeout(()=>endGame(false),500)); game.running=false; return; }
   next();
 }
-function next(){
+const NEXT_DELAY=380;
+function next(wait=NEXT_DELAY){
   game.i++; game.target=null; setHint(null); updateHud();
-  if(game.i>=game.queue.length){ game.timers.push(setTimeout(()=>endGame(true),550)); return; }
-  game.timers.push(setTimeout(spawn,380));
+  if(game.i>=game.queue.length){ game.timers.push(setTimeout(()=>endGame(true),Math.max(550,wait))); return; }
+  game.timers.push(setTimeout(spawn,wait));
 }
 
 function endGame(win){
@@ -594,11 +758,12 @@ function endGame(win){
 
   $('#result').style.background=game.theme.bg;
   $('#resEmoji').textContent=win?(stars===3?'🏆':stars===2?'🎉':'👍'):'💪';
-  $('#resTitle').textContent=win?['','過關了！','很棒喔！','完美！超厲害！'][stars]:'差一點點！再試一次';
+  const title=win?RESULT_LINES['win'+stars]:RESULT_LINES.lose;
+  $('#resTitle').textContent=title;
   $('#resStars').innerHTML=[0,1,2].map(k=>`<span class="${k<stars?'st-on':'st-off'}" style="animation-delay:${0.15+k*0.2}s">★</span>`).join('');
-  let note='';
-  if(win&&before===0&&hasNext) note='🔓 下一關解鎖了！';
-  else if(improved) note='✨ 新紀錄！';
+  let note='', spoken=[title];
+  if(win&&before===0&&hasNext){ note='🔓 '+RESULT_LINES.unlock; spoken.push(RESULT_LINES.unlock); }
+  else if(improved){ note='✨ '+RESULT_LINES.record; spoken.push(RESULT_LINES.record); }
   else if(!win) note='讓東西掉到地上 5 次就要重來喔';
   $('#resNote').textContent=note;
   $('#resStats').innerHTML=`
@@ -610,6 +775,7 @@ function endGame(win){
   if(win) chord([523,659,784,1047],0.12); else { beep(392,0.2,'triangle',0.06); beep(330,0.3,'triangle',0.06,0.2); }
   $('#overlay').classList.remove('show');
   show('result');
+  game.timers.push(setTimeout(()=>{ if(!document.hidden) voice.sayAll(spoken.map(s=>['zh',s])); },600));
 }
 
 function togglePause(force){
@@ -617,12 +783,16 @@ function togglePause(force){
   game.paused=force!==undefined?force:!game.paused;
   const ov=$('#overlay');
   if(game.paused){
+    voice.stop();
     ov.classList.add('show');
     ov.innerHTML=`<div class="pause-card"><div class="pc-title">⏸ 休息一下</div>
       <button class="btn primary" data-act="resume">繼續玩</button>
       <button class="btn" data-act="quit">回關卡</button>
       <div class="pc-tip">按 Esc 也可以繼續</div></div>`;
-  }else{ ov.classList.remove('show'); ov.innerHTML=''; game.last=performance.now(); }
+  }else{
+    ov.classList.remove('show'); ov.innerHTML=''; game.last=performance.now();
+    if(game.target&&!game.target.done) sayTarget(game.target);
+  }
 }
 
 /* ---------- events ---------- */
@@ -630,6 +800,7 @@ let resetArmed=false;
 $('#themeGrid').addEventListener('click',e=>{ const c=e.target.closest('.theme-card'); if(c){ beep(700); openTheme(+c.dataset.i); } });
 $('#speedSeg').addEventListener('click',e=>{ const b=e.target.closest('[data-speed]'); if(!b) return; settings.speed=b.dataset.speed; store.set(SKEY,settings); renderHome(); });
 $('#soundBtn').addEventListener('click',()=>{ settings.sound=!settings.sound; store.set(SKEY,settings); renderHome(); beep(700); });
+$('#voiceBtn').addEventListener('click',()=>{ settings.voice=!settings.voice; store.set(SKEY,settings); if(!settings.voice) voice.stop(); renderHome(); beep(700); });
 $('#resetBtn').addEventListener('click',()=>{
   if(!resetArmed){ resetArmed=true; $('#resetBtn').textContent='再按一次確認清除'; return; }
   progress={}; store.set(PKEY,progress); renderHome(); toast('進度已清除');
@@ -660,7 +831,11 @@ document.addEventListener('keydown',e=>{
     ($('#btnNext').style.display!=='none'?$('#btnNext'):$('#btnRetry')).click();
   }
 });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden&&game&&game.running&&!game.paused) togglePause(true); });
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden) return;
+  voice.stop();
+  if(game&&game.running&&!game.paused) togglePause(true);
+});
 
 renderHome();
 </script>
