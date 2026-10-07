@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kevin 的打字大冒險</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect x=%274%27 y=%278%27 width=%2756%27 height=%2752%27 rx=%2714%27 fill=%27%23c9a400%27/%3E%3Crect x=%274%27 y=%274%27 width=%2756%27 height=%2750%27 rx=%2714%27 fill=%27%23ffc93c%27/%3E%3Ctext x=%2732%27 y=%2742%27 font-family=%27Arial,sans-serif%27 font-size=%2734%27 font-weight=%27700%27 text-anchor=%27middle%27 fill=%27%231f2150%27%3EK%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
@@ -171,6 +172,23 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
 @media (max-height:620px){
   .kb{--k:clamp(24px,5vw,42px)}
   .hud{padding-top:6px}
+}
+/* 手機橫拿等矮螢幕：縮小上方列、提示與螢幕鍵盤，讓整個遊戲畫面不用捲動 */
+@media (max-height:480px){
+  .hud{padding:4px 10px 2px;gap:8px}
+  .icon-btn{width:38px;height:38px;font-size:17px;border-radius:12px}
+  .hud-title b{font-size:16px}
+  .hud-title small{font-size:12px}
+  .hud-stat{padding:4px 10px;font-size:15px;border-radius:12px}
+  .progress{height:6px;margin:3px 10px 6px}
+  .play{min-height:110px;margin:0 10px;border-radius:18px}
+  .ground{height:30px;font-size:18px}
+  .t-emoji{font-size:34px}
+  .t-word{font-size:28px}
+  .hint{font-size:15px;padding:4px 10px 2px;min-height:30px}
+  .hint .hk{min-width:26px;height:26px;font-size:16px}
+  .kb{--k:clamp(20px,7.4vh,34px);gap:4px;padding:2px 8px 6px}
+  .kb-row{gap:4px}
 }
 </style>
 </head>
